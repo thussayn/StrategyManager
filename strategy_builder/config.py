@@ -1,3 +1,4 @@
+# strategy_builder/config.py
 # -*- coding: utf-8 -*-
 import os, json, glob
 
@@ -15,8 +16,8 @@ def load_config(assets_dir: str) -> dict:
                 return json.load(f)
         except Exception:
             pass
-    # default empty config
-    return {}
+    # default config with language setting
+    return {"language": "ar"}  # اللغة الافتراضية العربية
 
 def save_config(assets_dir: str, cfg: dict) -> None:
     path = _config_file_path(assets_dir)
@@ -28,8 +29,9 @@ def save_config(assets_dir: str, cfg: dict) -> None:
 
 def discover_defaults(assets_dir: str) -> dict:
     """Try to auto-detect defaults from assets folder."""
-    cfg = {}
-    # Bank file
+    cfg = {"language": "ar"}  # إضافة اللغة الافتراضية
+    
+    # الباقي بدون تغيير
     bank_candidates = [
         os.path.join(assets_dir, "بنك_الاستراتيجية v2.0.xlsx"),
     ] + glob.glob(os.path.join(assets_dir, "*.xlsx"))
@@ -79,3 +81,6 @@ def apply_to_session_state(assets_dir: str, cfg: dict, st):
     # Preferred font
     if cfg.get("pdf_font_preference"):
         st.session_state["_pdf_font_pref"] = cfg["pdf_font_preference"]
+    # Language setting
+    if cfg.get("language"):
+        st.session_state["language"] = cfg["language"]

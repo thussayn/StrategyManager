@@ -1,99 +1,123 @@
+# strategy_builder/ui/settings.py
 # -*- coding: utf-8 -*-
-import os, shutil
+import os
 import streamlit as st
-from strategy_builder.config import load_config, save_config, discover_defaults, apply_to_session_state
+from strategy_builder.config import load_config, save_config
+from strategy_builder.Languages.translations import get_translation, get_available_languages
 
-def _fonts_dir(assets_dir: str) -> str:
-    p = os.path.join(assets_dir, "fonts")
-    os.makedirs(p, exist_ok=True)
-    return p
+def tr(key: str) -> str:
+    """Translation helper function"""
+    lang = st.session_state.get("language", "ar")
+    return get_translation(lang, key)
 
 def render_settings(assets_dir: str):
-    st.header("⚙️ الإعدادات")
-
+    st.header("⚙️ " + tr("settings"))
+    
+    # تحميل الإعدادات الحالية
     cfg = load_config(assets_dir)
-    if not cfg:
-        # try to detect existing files on first run
-        cfg = discover_defaults(assets_dir)
-        if cfg:
-            save_config(assets_dir, cfg)
-
-    # Current status
-    st.subheader("الحالة الحالية")
-    st.write({
-        "bank_file": cfg.get("bank_filename", "— غير محدد —"),
-        "logo_file": cfg.get("logo_filename", "— غير محدد —"),
-        "pdf_font_preference": cfg.get("pdf_font_preference", "— غير محدد —"),
-        "font_regular": cfg.get("font_regular", "—"),
-        "font_bold": cfg.get("font_bold", "—"),
-    })
-
-    st.markdown("---")
-    st.subheader("📚 بنك الاستراتيجية")
-    bank_upl = st.file_uploader("رفع ملف Excel للبنك", type=["xlsx"], key="bank_upl_settings")
-    if bank_upl is not None:
-        out_name = bank_upl.name
-        out_path = os.path.join(assets_dir, out_name)
-        with open(out_path, "wb") as f:
-            f.write(bank_upl.read())
-        cfg["bank_filename"] = out_name
-        save_config(assets_dir, cfg)
-        st.success(f"تم حفظ البنك: {out_name}")
-
-    st.markdown("---")
-    st.subheader("🏷️ الشعار")
-    logo_upl = st.file_uploader("رفع شعار (PNG/JPG)", type=["png","jpg","jpeg"], key="logo_upl_settings")
-    if logo_upl is not None:
-        out_name = logo_upl.name
-        out_path = os.path.join(assets_dir, out_name)
-        with open(out_path, "wb") as f:
-            f.write(logo_upl.read())
-        cfg["logo_filename"] = out_name
-        save_config(assets_dir, cfg)
-        st.success(f"تم حفظ الشعار: {out_name}")
-
-    st.markdown("---")
-    st.subheader("🅰️ خطوط PDF العربية")
-    fonts_dir = _fonts_dir(assets_dir)
-    up_reg = st.file_uploader("رفع خط Regular (TTF)", type=["ttf"], key="font_reg_settings")
-    up_bold = st.file_uploader("رفع خط Bold (TTF)", type=["ttf"], key="font_bold_settings")
-
-    if up_reg is not None:
-        out_name = up_reg.name
-        with open(os.path.join(fonts_dir, out_name), "wb") as f:
-            f.write(up_reg.read())
-        cfg["font_regular"] = out_name
-        save_config(assets_dir, cfg)
-        st.success(f"تم حفظ خط Regular: {out_name}")
-
-    if up_bold is not None:
-        out_name = up_bold.name
-        with open(os.path.join(fonts_dir, out_name), "wb") as f:
-            f.write(up_bold.read())
-        cfg["font_bold"] = out_name
-        save_config(assets_dir, cfg)
-        st.success(f"تم حفظ خط Bold: {out_name}")
-
-    # Choose preferred font family
-    candidates_map = {
-        "Amiri": ["Amiri-Regular.ttf", "Amiri.ttf"],
-        "NotoNaskhArabic": ["NotoNaskhArabic-Regular.ttf", "NotoNaskhArabic.ttf"],
-        "Cairo": ["Cairo-Regular.ttf", "Cairo.ttf"],
+    
+    # قسم إعدادات اللغة
+    st.subheader("🌐 " + tr("language_settings"))
+    
+    available_langs = get_available_languages()
+    current_lang = st.session_state.get("language", cfg.get("language", "ar"))
+    
+    # Language selector مع أعلام
+    lang_display = {
+        "ar": "🇸🇦 العربية",
+        "en": "🇺🇸 English"
     }
-    available_fonts = []
-    for fam, candidates in candidates_map.items():
-        for c in candidates:
-            if os.path.exists(os.path.join(fonts_dir, c)):
-                available_fonts.append(fam); break
-    pref = st.selectbox("اختيار العائلة المفضلة لـ PDF", options=(available_fonts or ["Amiri","NotoNaskhArabic","Cairo"]), index=0 if available_fonts else 2)
-    if st.button("💾 حفظ تفضيل الخط"):
-        cfg["pdf_font_preference"] = pref
+    
+    selected_lang = st.selectbox(
+        tr("choose_language"),
+        options=list(available_langs.keys()),
+        format_func=lambda x: lang_display[x],
+        index=list(available_langs.keys()).index(current_lang) if current_lang in available_langs else 0,
+        key="language_settings_selector"
+    )
+    
+    # رسالة توضيحية عن الـ sidebar
+    if selected_lang != current_lang:
+        st.warning("🔄 **ملاحظة:** لتطبيق تغيير مكان الشريط الجانبي، يرجى إعادة تشغيل التطبيق")
+
+    # تحديث اللغة إذا تغيرت
+    if selected_lang != st.session_state.get("language"):
+        st.session_state.language = selected_lang
+        cfg["language"] = selected_lang
         save_config(assets_dir, cfg)
-        st.success(f"تم حفظ تفضيل الخط: {pref}")
-
+        st.success(tr("language_updated"))
+        st.rerun()
+    
     st.markdown("---")
-    if st.button("تطبيق الإعدادات على الجلسة الحالية"):
-        apply_to_session_state(assets_dir, cfg, st)
-        st.success("تم تطبيق الإعدادات على الجلسة.")
-
-    st.info("تُحفظ الإعدادات في ملف config.json داخل مجلد assets.")
+    
+    # باقي إعدادات المظهر (الموجودة حالياً)
+    st.subheader("🎨 " + tr("appearance_settings"))
+    
+    # Theme settings
+    theme_options = [tr("light"), tr("dark")]
+    current_theme = cfg.get("theme", tr("light"))
+    theme_index = theme_options.index(current_theme) if current_theme in theme_options else 0
+    theme_choice = st.selectbox(tr("theme"), theme_options, index=theme_index)
+    cfg["theme"] = theme_choice
+    
+    # Logo upload
+    st.markdown("### 🖼️ " + tr("upload_logo"))
+    uploaded_logo = st.file_uploader(tr("browse_files"), type=['png', 'jpg', 'jpeg'], key="logo_upload")
+    if uploaded_logo is not None:
+        logo_path = os.path.join(assets_dir, "uploaded_logo.png")
+        with open(logo_path, "wb") as f:
+            f.write(uploaded_logo.getbuffer())
+        cfg["logo_filename"] = "uploaded_logo.png"
+        st.success(tr("logo_upload_success"))
+    
+    st.markdown("---")
+    
+    # إعدادات التصدير
+    st.subheader("📤 " + tr("export_settings"))
+    
+    # Font selection for PDF
+    fonts_dir = os.path.join(assets_dir, "fonts")
+    available_fonts = []
+    if os.path.exists(fonts_dir):
+        font_files = os.listdir(fonts_dir)
+        if "Cairo-Regular.ttf" in font_files:
+            available_fonts.append("Cairo")
+        if "Amiri-Regular.ttf" in font_files:
+            available_fonts.append("Amiri")
+        if "NotoNaskhArabic-Regular.ttf" in font_files:
+            available_fonts.append("NotoNaskhArabic")
+    
+    if available_fonts:
+        current_font = cfg.get("pdf_font_preference", available_fonts[0])
+        font_choice = st.selectbox(tr("select_font"), available_fonts, 
+                                 index=available_fonts.index(current_font) if current_font in available_fonts else 0)
+        cfg["pdf_font_preference"] = font_choice
+    else:
+        st.warning(tr("no_fonts_available"))
+    
+    st.markdown("---")
+    
+    # Bank file upload
+    st.subheader("📊 " + tr("upload_bank"))
+    uploaded_bank = st.file_uploader(tr("browse_files") + " (Excel)", type=['xlsx'], key="bank_upload")
+    if uploaded_bank is not None:
+        bank_path = os.path.join(assets_dir, uploaded_bank.name)
+        with open(bank_path, "wb") as f:
+            f.write(uploaded_bank.getbuffer())
+        cfg["bank_filename"] = uploaded_bank.name
+        st.success(tr("bank_upload_success"))
+    
+    # حفظ كل الإعدادات
+    if st.button("💾 " + tr("save_settings")):
+        save_config(assets_dir, cfg)
+        st.success(tr("settings_saved"))
+        
+        # تحديث session state
+        if cfg.get("logo_filename"):
+            st.session_state["_logo_path"] = os.path.join(assets_dir, cfg["logo_filename"])
+        if cfg.get("pdf_font_preference"):
+            st.session_state["_pdf_font_pref"] = cfg["pdf_font_preference"]
+        if cfg.get("language"):
+            st.session_state["language"] = cfg["language"]
+        
+        st.rerun()
