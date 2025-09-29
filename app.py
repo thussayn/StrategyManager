@@ -48,17 +48,15 @@ def main():
         if cfg.get("pdf_font_preference"):
             st.caption(f"خط PDF المفضل: {cfg.get('pdf_font_preference')}")
 
-    # ---- Navigation (single canonical radio with fixed key) ----
+    # ---- Navigation ----
     st.sidebar.header("القائمة")
     options = ["🏗️ بناء/تعديل استراتيجية", "📂 استعراض/إدارة الاستراتيجيات", "⏯️ استكمال آخر جلسة", "⚙️ الإعدادات"]
-    cfg_bank_exists = False
-    if cfg.get('bank_filename'):
-        _maybe_bank = os.path.join(ASSETS_DIR, cfg['bank_filename'])
-        cfg_bank_exists = os.path.exists(_maybe_bank)
-    _default_exists = os.path.exists(DEFAULT_BANK_PATH)
-    bank_exists_any = cfg_bank_exists or _default_exists
-    _default_index = 0 if bank_exists_any else 3
-    mode = st.sidebar.radio("اختر:", options, index=_default_index, key="nav_radio")
+
+    if "pending_nav" in st.session_state:
+        st.session_state["nav_radio"] = st.session_state["pending_nav"]
+        del st.session_state["pending_nav"]
+
+    mode = st.sidebar.radio("اختر:", options, key="nav_radio")
 
     # Open settings page early
     if mode == "⚙️ الإعدادات":
@@ -106,7 +104,24 @@ def main():
         return
 
     if mode == "🏗️ بناء/تعديل استراتيجية":
-        action = st.radio("اختيار الإجراء:", ["إنشاء استراتيجية جديدة", "تحميل استراتيجية محفوظة للتعديل"], horizontal=True)
+        action_options = ["إنشاء استراتيجية جديدة", "تحميل استراتيجية محفوظة للتعديل"]
+
+        # ✅ لو في جلسة تعديل، نخلي الافتراضي "تحميل استراتيجية محفوظة للتعديل"
+        if "force_edit_mode" in st.session_state and st.session_state["force_edit_mode"]:
+            default_action = "تحميل استراتيجية محفوظة للتعديل"
+        else:
+            default_action = action_options[0]
+
+        action = st.radio(
+            "اختيار الإجراء:",
+            action_options,
+            index=action_options.index(default_action),
+            horizontal=True
+        )
+
+        # 👇 لو المستخدم غيّر يدويًا إلى "إنشاء"، نلغي وضع التعديل
+        if action == "إنشاء استراتيجية جديدة" and "force_edit_mode" in st.session_state:
+            st.session_state["force_edit_mode"] = False
 
         if action == "إنشاء استراتيجية جديدة":
             # Reset once
@@ -135,7 +150,19 @@ def main():
                 st.info("لا توجد استراتيجيات محفوظة بعد.")
                 return
 
-            choice = st.selectbox("اختر استراتيجية", [f"{s['id']} - {s['name']} ({s['created_at']})" for s in strategies])
+            options_list = [f"{s['id']} - {s['name']} ({s['created_at']})" for s in strategies]
+
+            # ✅ اختيار الاستراتيجية الافتراضي لو جاي من زر تعديل
+            if "strategy_id" in st.session_state:
+                try:
+                    default_index = next(i for i, s in enumerate(strategies) if s["id"] == st.session_state["strategy_id"])
+                except StopIteration:
+                    default_index = 0
+            else:
+                default_index = 0
+
+            choice = st.selectbox("اختر استراتيجية", options_list, index=default_index)
+
             if choice:
                 sid = int(choice.split("-")[0].strip())
                 if st.session_state.get("_loaded_id") != sid:
@@ -213,7 +240,11 @@ def main():
                 st.session_state._loaded_id = data["id"]
                 st.session_state._new_init_done = False
                 save_progress(data["id"], 1)
+
+                st.session_state["force_edit_mode"] = True
+                st.session_state["pending_nav"] = "🏗️ بناء/تعديل استراتيجية"
                 st.rerun()
+
         with c2:
             if st.button("🗑️ حذف"):
                 delete_strategy(sid)

@@ -60,16 +60,26 @@ def run_wizard(visions, vision_to_msgs, msg_to_goals, msg_to_values, all_goals, 
     # ===== الخطوة 1: الرؤية =====
     if st.session_state.step == 1:
         st.subheader("الخطوة 1: الرؤية")
+        
+        # اختر رؤية من الـ dropdown
         v_choice = st.selectbox("اختر رؤية من البنك", ["— اختر —"] + visions, index=0)
+        
+        # إذا تم اختيار رؤية من الدروب داون
+        if v_choice != "— اختر —":
+            st.session_state["vision"] = v_choice
+
+        # عرض النص في text_area
         v_text = st.text_area(
             "✏️ تعديل/إدخال رؤية",
-            value=st.session_state.get("vision", "") or ("" if v_choice == "— اختر —" else v_choice),
+            value=st.session_state.get("vision", "")  # نعرض القيمة في session_state
         )
+
+        # حفظ الرؤية في session_state
         vision_input = v_text.strip() or (v_choice if v_choice != "— اختر —" else "")
 
         col1, col2 = st.columns(2)
-        if col1.button("⬅️ السابق"):
-            st.info("أنت بالفعل في أول خطوة")
+        if col1.button("⬅️ السابق", disabled=True):
+            pass
         if col2.button("التالي ➡️", type="primary"):
             if vision_input:
                 if not st.session_state.strategy_id:
@@ -77,7 +87,11 @@ def run_wizard(visions, vision_to_msgs, msg_to_goals, msg_to_values, all_goals, 
                     st.session_state.strategy_id = create_strategy(name)
                     st.session_state.name = name
 
+                # عند اختيار رؤية جديدة، نحتفظ ببقية القيم (الرسالة، الأهداف، القيم) كما هي
                 st.session_state.vision = vision_input
+                st.session_state.message = st.session_state.get("message", "")
+                st.session_state.goals = st.session_state.get("goals", [])
+                st.session_state.values = st.session_state.get("values", [])
 
                 # حفظ الاسم إن وجد ID
                 nm = st.session_state.get("name", "").strip()
@@ -85,11 +99,12 @@ def run_wizard(visions, vision_to_msgs, msg_to_goals, msg_to_values, all_goals, 
                     update_strategy_name(st.session_state.strategy_id, nm)
 
                 st.session_state.step = 2
-                save_progress(st.session_state.strategy_id, st.session_state.step)
+                save_progress(st.session_state.get("strategy_id", -1), 2)
 
+                # حفظ الاستراتيجية مع الرؤية الجديدة
                 upsert_components(
                     st.session_state.strategy_id,
-                    st.session_state.vision,
+                    st.session_state["vision"],
                     st.session_state.get("message", ""),
                     st.session_state.get("goals", []),
                     st.session_state.get("values", []),
@@ -103,10 +118,13 @@ def run_wizard(visions, vision_to_msgs, msg_to_goals, msg_to_values, all_goals, 
         st.subheader("الخطوة 2: الرسالة")
         msgs = vision_to_msgs.get(st.session_state.get("vision", ""), [])
         m_choice = st.selectbox("الرسائل المرتبطة بالرؤية", ["— اختر —"] + msgs, index=0)
+        
         m_text = st.text_area(
             "✏️ تعديل/إدخال رسالة",
             value=st.session_state.get("message", "") or ("" if m_choice == "— اختر —" else m_choice),
         )
+        
+        # حفظ الرسالة في session_state
         message_input = m_text.strip() or (m_choice if m_choice != "— اختر —" else "")
 
         col1, col2 = st.columns(2)
@@ -125,6 +143,7 @@ def run_wizard(visions, vision_to_msgs, msg_to_goals, msg_to_values, all_goals, 
                 st.session_state.step = 3
                 save_progress(st.session_state.strategy_id, st.session_state.step)
 
+                # حفظ المكونات بما فيها الرسالة
                 upsert_components(
                     st.session_state.strategy_id,
                     st.session_state.get("vision", ""),
@@ -172,12 +191,13 @@ def run_wizard(visions, vision_to_msgs, msg_to_goals, msg_to_values, all_goals, 
                 st.session_state.step = 4
                 save_progress(st.session_state.strategy_id, st.session_state.step)
 
+                # حفظ المكونات بما فيها الأهداف
                 upsert_components(
                     st.session_state.strategy_id,
                     st.session_state.get("vision", ""),
                     st.session_state.get("message", ""),
                     st.session_state.goals,
-                    st.session_state.get("values", []),
+                    [],
                 )
                 st.rerun()
             else:
@@ -219,6 +239,7 @@ def run_wizard(visions, vision_to_msgs, msg_to_goals, msg_to_values, all_goals, 
                 st.session_state.step = 5
                 save_progress(st.session_state.strategy_id, st.session_state.step)
 
+                # حفظ المكونات بما فيها القيم
                 upsert_components(
                     st.session_state.strategy_id,
                     st.session_state.get("vision", ""),
