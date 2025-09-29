@@ -27,3 +27,7 @@ Thumbs.db
 build/
 dist/
 *.egg-info/
+
+# Local data files (specific to Strategy Manager)
+last_session.json
+strategies.db
