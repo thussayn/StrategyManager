@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-# -*- coding: utf-8 -*-
 import os
 import datetime
 import streamlit as st
@@ -19,7 +18,7 @@ ASSETS_DIR = os.path.join(os.path.dirname(__file__), "strategy_builder", "assets
 DEFAULT_BANK_PATH = os.path.join(ASSETS_DIR, "بنك_الاستراتيجية v2.0.xlsx")
 
 def main():
-    st.set_page_config(page_title="منشئ الاستراتيجيات - نسخة نظيفة (Modular)", layout="wide")
+    st.set_page_config(page_title="مدير الاستراتيجيات", layout="wide")
     apply_base_styles()
 
     # Ensure DB exists
@@ -43,7 +42,7 @@ def main():
         if logo_p and os.path.exists(logo_p):
             st.image(logo_p, use_container_width=True)
     with col_t:
-        st.title("🗂️ منشئ الاستراتيجيات - نسخة نظيفة (Modular)")
+        st.title("🗂️ مدير الاستراتيجيات")
         if cfg.get("logo_filename"):
             st.caption(f"الشعار الحالي: {cfg.get('logo_filename')}")
         if cfg.get("pdf_font_preference"):
