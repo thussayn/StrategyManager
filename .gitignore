@@ -31,3 +31,10 @@ dist/
 # Local data files (specific to Strategy Manager)
 last_session.json
 strategies.db
+
+# أنشئ/عدل ملف .gitignore
+echo "__pycache__/" >> .gitignore
+echo "*.pyc" >> .gitignore
+echo "*.zip" >> .gitignore
+echo "strategy_builder/assets/config.json" >> .gitignore
+echo ".env" >> .gitignore
